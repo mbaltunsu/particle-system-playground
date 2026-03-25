@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { SceneTimelineAPI } from '@/hooks/useSceneTimeline';
 import { listScenes, loadScene, deleteScene } from '@/lib/scene/scene-manager';
@@ -10,12 +10,28 @@ interface TimelineEditorProps {
 }
 
 export default function TimelineEditor({ timeline }: TimelineEditorProps) {
-  const { scene, isPlaying, currentTime, playbackSpeed } = timeline;
+  const { scene, isPlaying, currentTime, playbackSpeed, playStart, playEnd, setPlayStart, setPlayEnd } = timeline;
   const keyframes = scene?.keyframes ?? [];
   const [isOpen, setIsOpen] = useState(false);
   const [showSceneList, setShowSceneList] = useState(false);
+  const [scenesList, setScenesList] = useState<{ id: string; name: string }[]>([]);
+
+  const refreshScenesList = useCallback(() => {
+    setScenesList(listScenes());
+  }, []);
+
+  useEffect(() => {
+    if (showSceneList) {
+      refreshScenesList();
+    }
+  }, [showSceneList, refreshScenesList]);
 
   const duration = scene?.duration ?? 10;
+
+  useEffect(() => {
+    setPlayEnd(duration);
+    if (playStart > duration) setPlayStart(0);
+  }, [duration, playStart, setPlayStart, setPlayEnd]);
 
   const handleBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!scene) return;
@@ -70,6 +86,22 @@ export default function TimelineEditor({ timeline }: TimelineEditorProps) {
                 {currentTime.toFixed(1)}s / {duration}s
               </span>
 
+              <div className="flex items-center gap-1">
+                <span className="font-mono text-[8px] text-cyan-400/40">DURATION</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={120}
+                  value={duration}
+                  onChange={(e) => {
+                    if (!scene) return;
+                    timeline.setScene({ ...scene, duration: Math.max(1, Number(e.target.value)) });
+                  }}
+                  className="w-12 bg-[#0d0d20] border border-cyan-400/10 rounded text-[9px] text-cyan-400/80 px-1 py-0.5 text-center"
+                />
+                <span className="font-mono text-[8px] text-cyan-400/40">s</span>
+              </div>
+
               <div className="flex items-center gap-1 ml-auto">
                 <span className="font-mono text-[8px] text-cyan-400/40">SPEED</span>
                 <select
@@ -84,7 +116,7 @@ export default function TimelineEditor({ timeline }: TimelineEditorProps) {
                 </select>
 
                 <button
-                  onClick={timeline.save}
+                  onClick={() => { timeline.save(); refreshScenesList(); }}
                   disabled={!scene}
                   className="rounded border border-cyan-400/20 bg-cyan-400/5 px-2 py-1 font-mono text-[9px] text-cyan-400 hover:bg-cyan-400/10 disabled:opacity-30 ml-2"
                 >
@@ -110,7 +142,7 @@ export default function TimelineEditor({ timeline }: TimelineEditorProps) {
                   className="mb-2 overflow-hidden"
                 >
                   <div className="border border-cyan-400/10 rounded p-1.5 space-y-1 max-h-24 overflow-y-auto">
-                    {listScenes().map((s) => (
+                    {scenesList.map((s) => (
                       <div key={s.id} className="flex items-center justify-between">
                         <button
                           onClick={() => { const loaded = loadScene(s.id); if (loaded) timeline.setScene(loaded); setShowSceneList(false); }}
@@ -119,14 +151,14 @@ export default function TimelineEditor({ timeline }: TimelineEditorProps) {
                           {s.name}
                         </button>
                         <button
-                          onClick={() => { deleteScene(s.id); setShowSceneList(false); setTimeout(() => setShowSceneList(true), 50); }}
+                          onClick={() => { deleteScene(s.id); refreshScenesList(); }}
                           className="text-[9px] text-red-400/50 hover:text-red-400 px-1"
                         >
                           x
                         </button>
                       </div>
                     ))}
-                    {listScenes().length === 0 && (
+                    {scenesList.length === 0 && (
                       <span className="text-[9px] text-cyan-400/30 font-mono">No saved scenes</span>
                     )}
                   </div>
@@ -161,6 +193,61 @@ export default function TimelineEditor({ timeline }: TimelineEditorProps) {
                   onDoubleClick={(e) => { e.stopPropagation(); timeline.removeKeyframe(kf.id); }}
                 />
               ))}
+
+              {/* Play range shaded region */}
+              <div
+                className="absolute top-0 bottom-0 bg-cyan-400/5 pointer-events-none"
+                style={{
+                  left: `${(playStart / duration) * 100}%`,
+                  width: `${((playEnd - playStart) / duration) * 100}%`,
+                }}
+              />
+
+              {/* Start handle */}
+              <div
+                className="absolute top-0 bottom-0 w-1 bg-green-400/50 cursor-ew-resize"
+                style={{ left: `${(playStart / duration) * 100}%`, zIndex: 15 }}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  const bar = e.currentTarget.parentElement!;
+                  const rect = bar.getBoundingClientRect();
+                  const onMove = (me: MouseEvent) => {
+                    const x = Math.max(0, Math.min((me.clientX - rect.left) / rect.width, playEnd / duration - 0.01));
+                    setPlayStart(x * duration);
+                  };
+                  const onUp = () => {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                  };
+                  document.addEventListener('mousemove', onMove);
+                  document.addEventListener('mouseup', onUp);
+                }}
+              >
+                <div className="absolute -top-1 -left-0.5 w-2 h-2 bg-green-400 transform rotate-45" />
+              </div>
+
+              {/* End handle */}
+              <div
+                className="absolute top-0 bottom-0 w-1 bg-red-400/50 cursor-ew-resize"
+                style={{ left: `${(playEnd / duration) * 100}%`, zIndex: 15 }}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  const bar = e.currentTarget.parentElement!;
+                  const rect = bar.getBoundingClientRect();
+                  const onMove = (me: MouseEvent) => {
+                    const x = Math.max(playStart / duration + 0.01, Math.min((me.clientX - rect.left) / rect.width, 1));
+                    setPlayEnd(x * duration);
+                  };
+                  const onUp = () => {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                  };
+                  document.addEventListener('mousemove', onMove);
+                  document.addEventListener('mouseup', onUp);
+                }}
+              >
+                <div className="absolute -bottom-1 -left-0.5 w-2 h-2 bg-red-400 transform rotate-45" />
+              </div>
 
               {/* Playhead */}
               <div

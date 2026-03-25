@@ -8,11 +8,40 @@ import type { Scene } from '@/lib/scene/types';
 import { interpolateAtTime } from '@/lib/scene/interpolation';
 import { captureKeyframe, createEmptyScene, saveScene } from '@/lib/scene/scene-manager';
 
+const LEVA_KEYS = new Set([
+  'gravity', 'repulsion', 'noiseScale', 'noiseSpeed', 'magneticStrength',
+  'vortexStrength', 'drag', 'windStrength', 'windDirectionX', 'windDirectionY',
+  'windDirectionZ', 'attractorStrength', 'attractorX', 'attractorY', 'attractorZ',
+  'turbulenceOctaves', 'turbulenceStrength', 'lifeDecay', 'simulationSpeed',
+  'simulationMode', 'collider0Type', 'collider0PositionY', 'collider0Size',
+  'collider0Restitution', 'collider1Type', 'collider1PositionX', 'collider1PositionY',
+  'collider1PositionZ', 'collider1Size', 'collider1Restitution',
+  'boidSeparation', 'boidAlignment', 'boidCohesion', 'boidRadius', 'boidSampleCount',
+  'nBodyStrength', 'nBodySoftening', 'nBodySampleCount', 'colorPalette', 'resolution',
+]);
+
+function safeLevaSet(levaSet: (values: Record<string, unknown>) => void, values: Record<string, unknown>) {
+  try {
+    const filtered = Object.fromEntries(
+      Object.entries(values).filter(([k]) => LEVA_KEYS.has(k))
+    );
+    if (Object.keys(filtered).length > 0) {
+      levaSet(filtered);
+    }
+  } catch (e) {
+    // Silently ignore Leva set errors during playback
+  }
+}
+
 export interface SceneTimelineAPI {
   scene: Scene | null;
   isPlaying: boolean;
   currentTime: number;
   playbackSpeed: number;
+  playStart: number;
+  playEnd: number;
+  setPlayStart: (t: number) => void;
+  setPlayEnd: (t: number) => void;
   setScene: (scene: Scene | null) => void;
   newScene: (name?: string) => void;
   play: () => void;
@@ -37,6 +66,8 @@ export function useSceneTimeline(
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
+  const [playStart, setPlayStart] = useState(0);
+  const [playEnd, setPlayEnd] = useState(10);
   const lastLevaUpdateRef = useRef(0);
   const timeRef = useRef(0);
 
@@ -45,6 +76,8 @@ export function useSceneTimeline(
     setCurrentTime(0);
     timeRef.current = 0;
     setIsPlaying(false);
+    setPlayStart(0);
+    setPlayEnd(s?.duration ?? 10);
   }, []);
 
   const newScene = useCallback((name = 'Untitled Scene') => {
@@ -106,9 +139,13 @@ export function useSceneTimeline(
     if (!scene || !isPlaying || !controlsRef.current) return;
     if (scene.keyframes.length < 2) return;
 
+    const effectiveStart = playStart;
+    const effectiveEnd = Math.min(playEnd, scene.duration);
     const newTime = timeRef.current + delta * playbackSpeed;
-    if (newTime >= scene.duration) {
-      timeRef.current = 0; // loop
+    if (newTime >= effectiveEnd) {
+      timeRef.current = effectiveStart; // loop to play range start
+    } else if (newTime < effectiveStart) {
+      timeRef.current = effectiveStart;
     } else {
       timeRef.current = newTime;
     }
@@ -135,16 +172,17 @@ export function useSceneTimeline(
       lastLevaUpdateRef.current = now;
       setCurrentTime(timeRef.current);
       if (result.state) {
-        levaSet(result.state as Record<string, unknown>);
+        safeLevaSet(levaSet, result.state as Record<string, unknown>);
       }
       if (result.colorPalette) {
-        levaSet({ colorPalette: result.colorPalette });
+        safeLevaSet(levaSet, { colorPalette: result.colorPalette });
       }
     }
   });
 
   return {
     scene, isPlaying, currentTime, playbackSpeed,
+    playStart, playEnd, setPlayStart, setPlayEnd,
     setScene, newScene, play, pause, togglePlay, seek,
     setPlaybackSpeed, addKeyframe, removeKeyframe,
     updateKeyframeTimestamp, save,

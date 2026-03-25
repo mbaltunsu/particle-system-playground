@@ -30,6 +30,12 @@ export const RESOLUTION_PRESETS = {
     maxParticles: 262144,
     description: '262K particles — high-end GPU',
   },
+  ultraplus: {
+    label: 'Ultra+',
+    textureSize: 1024,
+    maxParticles: 1048576,
+    description: '1M particles — high-end discrete GPU only',
+  },
 } as const satisfies Record<string, ResolutionPreset>;
 
 export type ResolutionPresetKey = keyof typeof RESOLUTION_PRESETS;
@@ -43,11 +49,13 @@ export function detectGPUCapabilities(gl: WebGLRenderingContext) {
     renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) as string;
   }
 
-  let maxPreset: ResolutionPresetKey = 'ultra';
+  let maxPreset: ResolutionPresetKey = 'ultraplus';
   if (maxTextureSize < 256) {
     maxPreset = 'medium';
   } else if (maxTextureSize < 512) {
     maxPreset = 'high';
+  } else if (maxTextureSize < 1024) {
+    maxPreset = 'ultra';
   }
 
   return { maxTextureSize, renderer, maxPreset };

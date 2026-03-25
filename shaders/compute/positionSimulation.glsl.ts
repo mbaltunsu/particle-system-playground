@@ -31,7 +31,8 @@ void main() {
   vec3 pos = posData.xyz;
   float life = posData.w;
 
-  life -= uLifeDecay * uDeltaTime;
+  float dt = min(uDeltaTime, 0.05);
+  life -= uLifeDecay * dt;
 
   if (life <= 0.0) {
     // Determine which emitter this particle belongs to

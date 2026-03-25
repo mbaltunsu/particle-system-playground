@@ -76,6 +76,9 @@ export function useGPUCompute(controlsRef: React.RefObject<{
     const controls = controlsRef.current;
     if (!compute || !controls) return;
 
+    // Skip compute during stalls to prevent mass particle death
+    if (delta > 0.5) return;
+
     const dt = Math.min(delta, 0.05) * (controls.simulationSpeed ?? 1.0);
     timeRef.current += dt;
 

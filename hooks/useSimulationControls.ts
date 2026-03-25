@@ -117,7 +117,7 @@ export function useSimulationControls() {
 
   const [controls, set] = useControls(() => ({
     Mode: folder({
-      simulationMode: { value: 0, options: { Particles: 0, Boids: 1, 'N-Body': 2, Cloth: 3 } },
+      simulationMode: { value: 0, options: { Particles: 0, Boids: 1, 'N-Body': 2, Cloth: 3 }, label: 'Simulation Mode' },
     }),
     Presets: folder({
       preset: {
@@ -126,47 +126,54 @@ export function useSimulationControls() {
       },
     }),
     Simulation: folder({
-      simulationSpeed: { value: DEFAULTS.simulationSpeed, min: 0.1, max: 3, step: 0.1 },
+      simulationSpeed: { value: DEFAULTS.simulationSpeed, min: 0.1, max: 3, step: 0.1, label: 'Time Scale' },
       resolution: {
         value: DEFAULTS.resolutionPreset as string,
-        options: { Low: 'low', Medium: 'medium', High: 'high', Ultra: 'ultra' },
+        options: {
+          'Low (4K)': 'low',
+          'Medium (16K)': 'medium',
+          'High (65K)': 'high',
+          'Ultra (262K)': 'ultra',
+          'Ultra+ (1M)': 'ultraplus',
+        },
+        label: 'Resolution',
       },
     }),
-    Forces: folder({
-      gravity: { value: DEFAULTS.gravity, min: -3, max: 3, step: 0.01 },
-      repulsion: { value: DEFAULTS.repulsion, min: 0, max: 3, step: 0.01 },
-      noiseScale: { value: DEFAULTS.noiseScale, min: 0, max: 5, step: 0.01 },
-      noiseSpeed: { value: DEFAULTS.noiseSpeed, min: 0, max: 2, step: 0.01 },
-      magneticStrength: { value: DEFAULTS.magneticStrength, min: 0, max: 3, step: 0.01 },
-      vortexStrength: { value: DEFAULTS.vortexStrength, min: 0, max: 3, step: 0.01 },
-      drag: { value: 1.0, min: 0, max: 5, step: 0.01 },
-      windStrength: { value: 0, min: 0, max: 3, step: 0.01 },
-      windDirectionX: { value: 1, min: -1, max: 1, step: 0.1 },
-      windDirectionY: { value: 0, min: -1, max: 1, step: 0.1 },
-      windDirectionZ: { value: 0, min: -1, max: 1, step: 0.1 },
-      attractorStrength: { value: 0, min: 0, max: 3, step: 0.01 },
-      attractorX: { value: 3, min: -10, max: 10, step: 0.1 },
-      attractorY: { value: 0, min: -10, max: 10, step: 0.1 },
-      attractorZ: { value: 0, min: -10, max: 10, step: 0.1 },
-      turbulenceOctaves: { value: 0, min: 0, max: 4, step: 1 },
-      turbulenceStrength: { value: 0.5, min: 0, max: 3, step: 0.01 },
+    'Force Modules': folder({
+      gravity: { value: DEFAULTS.gravity, min: -3, max: 3, step: 0.01, label: 'Gravity Force' },
+      repulsion: { value: DEFAULTS.repulsion, min: 0, max: 3, step: 0.01, label: 'Repulsion Force' },
+      noiseScale: { value: DEFAULTS.noiseScale, min: 0, max: 5, step: 0.01, label: 'Curl Noise Scale' },
+      noiseSpeed: { value: DEFAULTS.noiseSpeed, min: 0, max: 2, step: 0.01, label: 'Curl Noise Speed' },
+      magneticStrength: { value: DEFAULTS.magneticStrength, min: 0, max: 3, step: 0.01, label: 'Magnetic Force' },
+      vortexStrength: { value: DEFAULTS.vortexStrength, min: 0, max: 3, step: 0.01, label: 'Vortex Force' },
+      drag: { value: 1.0, min: 0, max: 5, step: 0.01, label: 'Drag Coefficient' },
+      windStrength: { value: 0, min: 0, max: 3, step: 0.01, label: 'Wind Force' },
+      windDirectionX: { value: 1, min: -1, max: 1, step: 0.1, label: 'Wind Dir X' },
+      windDirectionY: { value: 0, min: -1, max: 1, step: 0.1, label: 'Wind Dir Y' },
+      windDirectionZ: { value: 0, min: -1, max: 1, step: 0.1, label: 'Wind Dir Z' },
+      attractorStrength: { value: 0, min: 0, max: 3, step: 0.01, label: 'Attractor Force' },
+      attractorX: { value: 3, min: -10, max: 10, step: 0.1, label: 'Attractor X' },
+      attractorY: { value: 0, min: -10, max: 10, step: 0.1, label: 'Attractor Y' },
+      attractorZ: { value: 0, min: -10, max: 10, step: 0.1, label: 'Attractor Z' },
+      turbulenceOctaves: { value: 0, min: 0, max: 4, step: 1, label: 'Turbulence Octaves' },
+      turbulenceStrength: { value: 0.5, min: 0, max: 3, step: 0.01, label: 'Turbulence Force' },
     }),
-    Boids: folder({
+    'Flocking Module': folder({
       boidSeparation: { value: 2.0, min: 0, max: 5, step: 0.1 },
       boidAlignment: { value: 1.0, min: 0, max: 3, step: 0.1 },
       boidCohesion: { value: 1.0, min: 0, max: 3, step: 0.1 },
       boidRadius: { value: 3.0, min: 0.5, max: 10, step: 0.1 },
       boidSampleCount: { value: 128, options: { '64': 64, '128': 128, '256': 256, '512': 512 } },
-    }),
-    'N-Body': folder({
+    }, { render: (get) => (get('Mode.simulationMode') as number) === 1 }),
+    'Gravity Module': folder({
       nBodyStrength: { value: 0.5, min: 0, max: 3, step: 0.01 },
       nBodySoftening: { value: 0.5, min: 0.01, max: 2, step: 0.01 },
       nBodySampleCount: { value: 128, options: { '64': 64, '128': 128, '256': 256, '512': 512 } },
+    }, { render: (get) => (get('Mode.simulationMode') as number) === 2 }),
+    'Particle Spawn': folder({
+      lifeDecay: { value: DEFAULTS.lifeDecay, min: 0.01, max: 1, step: 0.01, label: 'Spawn Rate' },
     }),
-    Particles: folder({
-      lifeDecay: { value: DEFAULTS.lifeDecay, min: 0.01, max: 1, step: 0.01 },
-    }),
-    Collision: folder({
+    'Collision Module': folder({
       collider0Type: { value: 0, options: { None: 0, 'Ground Plane': 3, Sphere: 1, Box: 2 } },
       collider0PositionY: { value: -3, min: -10, max: 10, step: 0.1 },
       collider0Size: { value: 1, min: 0.1, max: 5, step: 0.1 },
@@ -178,7 +185,7 @@ export function useSimulationControls() {
       collider1Size: { value: 1, min: 0.1, max: 5, step: 0.1 },
       collider1Restitution: { value: 0.5, min: 0, max: 1, step: 0.01 },
     }),
-    Rendering: folder({
+    'Render Module': folder({
       colorPalette: { value: 'plasma', options: { Plasma: 'plasma', Ice: 'ice', Fire: 'fire', Neon: 'neon', Monochrome: 'monochrome', Ocean: 'ocean', Aurora: 'aurora' } },
     }),
   }));

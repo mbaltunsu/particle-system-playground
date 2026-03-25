@@ -1,6 +1,6 @@
 export type EmitterType = 'point' | 'sphere' | 'directional' | 'box' | 'cylinder' | 'cone' | 'torus' | 'disc' | 'line' | 'grid';
 
-export type ResolutionPresetKey = 'low' | 'medium' | 'high' | 'ultra';
+export type ResolutionPresetKey = 'low' | 'medium' | 'high' | 'ultra' | 'ultraplus';
 
 export interface ForceParams {
   gravity: number;

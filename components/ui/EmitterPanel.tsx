@@ -102,9 +102,21 @@ function EmitterItem({ emitter, index, onUpdate, onRemove, canRemove }: {
           <NumberInput label="Pos Y" value={emitter.position[1]} onChange={(v) => updatePosition(1, v)} min={-10} max={10} />
           <NumberInput label="Pos Z" value={emitter.position[2]} onChange={(v) => updatePosition(2, v)} min={-10} max={10} />
           <NumberInput label="Speed" value={emitter.speed} onChange={(v) => update('speed', v)} min={0.1} max={10} />
-          <NumberInput label="Radius" value={emitter.radius} onChange={(v) => update('radius', v)} min={0.1} max={5} />
-          <NumberInput label="Height" value={emitter.height} onChange={(v) => update('height', v)} min={0.1} max={10} />
-          <NumberInput label="Angle" value={emitter.angle} onChange={(v) => update('angle', v)} min={0.1} max={3.14} step={0.01} />
+          {(emitter.type === 1 || emitter.type === 2 || emitter.type === 4 || emitter.type === 7 || emitter.type === 9) && (
+            <NumberInput label="Radius" value={emitter.radius} onChange={(v) => update('radius', v)} min={0.1} max={5} />
+          )}
+          {(emitter.type === 4 || emitter.type === 5) && (
+            <NumberInput label="Height" value={emitter.height} onChange={(v) => update('height', v)} min={0.1} max={10} />
+          )}
+          {emitter.type === 5 && (
+            <NumberInput label="Angle" value={emitter.angle} onChange={(v) => update('angle', v)} min={0.1} max={3.14} step={0.01} />
+          )}
+          {emitter.type === 6 && (
+            <NumberInput label="Major R" value={emitter.majorRadius} onChange={(v) => update('majorRadius', v)} min={0.1} max={10} />
+          )}
+          {emitter.type === 6 && (
+            <NumberInput label="Minor R" value={emitter.minorRadius} onChange={(v) => update('minorRadius', v)} min={0.1} max={5} />
+          )}
         </div>
       )}
     </motion.div>
