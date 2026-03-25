@@ -5,7 +5,7 @@ import { useControls, folder } from 'leva';
 import { DEFAULTS } from '@/lib/constants';
 import { EmitterType, ResolutionPresetKey } from '@/lib/types';
 import { BUILT_IN_PRESETS } from '@/lib/presets';
-import { PALETTE_NAMES } from '@/lib/color-palettes';
+
 
 export interface SimulationState {
   gravity: number;
@@ -131,14 +131,14 @@ export function useSimulationControls() {
     Presets: folder({
       preset: {
         value: 'Default',
-        options: PRESET_NAMES,
+        options: Object.fromEntries(PRESET_NAMES.map(n => [n, n])),
       },
     }),
     Simulation: folder({
       simulationSpeed: { value: DEFAULTS.simulationSpeed, min: 0.1, max: 3, step: 0.1 },
       resolution: {
         value: DEFAULTS.resolutionPreset as string,
-        options: ['low', 'medium', 'high', 'ultra'],
+        options: { Low: 'low', Medium: 'medium', High: 'high', Ultra: 'ultra' },
       },
     }),
     Forces: folder({
@@ -165,18 +165,18 @@ export function useSimulationControls() {
       boidAlignment: { value: 1.0, min: 0, max: 3, step: 0.1 },
       boidCohesion: { value: 1.0, min: 0, max: 3, step: 0.1 },
       boidRadius: { value: 3.0, min: 0.5, max: 10, step: 0.1 },
-      boidSampleCount: { value: 128, options: [64, 128, 256, 512] },
+      boidSampleCount: { value: 128, options: { '64': 64, '128': 128, '256': 256, '512': 512 } },
     }),
     'N-Body': folder({
       nBodyStrength: { value: 0.5, min: 0, max: 3, step: 0.01 },
       nBodySoftening: { value: 0.5, min: 0.01, max: 2, step: 0.01 },
-      nBodySampleCount: { value: 128, options: [64, 128, 256, 512] },
+      nBodySampleCount: { value: 128, options: { '64': 64, '128': 128, '256': 256, '512': 512 } },
     }),
     Particles: folder({
       lifeDecay: { value: DEFAULTS.lifeDecay, min: 0.01, max: 1, step: 0.01 },
     }),
     Emitter: folder({
-      emitterType: { value: 'point' as EmitterType, options: ['point', 'sphere', 'directional', 'box', 'cylinder', 'cone', 'torus', 'disc', 'line', 'grid'] },
+      emitterType: { value: 'point' as EmitterType, options: { Point: 'point', Sphere: 'sphere', Directional: 'directional', Box: 'box', Cylinder: 'cylinder', Cone: 'cone', Torus: 'torus', Disc: 'disc', Line: 'line', Grid: 'grid' } },
       emitterSpeed: { value: DEFAULTS.emitterSpeed, min: 0.1, max: 10, step: 0.1 },
       emitterRadius: { value: DEFAULTS.emitterRadius, min: 0.1, max: 5, step: 0.1 },
       emitterHeight: { value: 2.0, min: 0.1, max: 10, step: 0.1 },
@@ -197,7 +197,7 @@ export function useSimulationControls() {
       collider1Restitution: { value: 0.5, min: 0, max: 1, step: 0.01 },
     }),
     Rendering: folder({
-      colorPalette: { value: 'plasma', options: PALETTE_NAMES },
+      colorPalette: { value: 'plasma', options: { Plasma: 'plasma', Ice: 'ice', Fire: 'fire', Neon: 'neon', Monochrome: 'monochrome', Ocean: 'ocean', Aurora: 'aurora' } },
     }),
   }));
 
