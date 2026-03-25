@@ -1,14 +1,22 @@
+import { emitterFunctions } from '../lib/emitters.glsl';
+
 export const positionSimulationShader = /* glsl */ `
 uniform float uDeltaTime;
 uniform float uLifeDecay;
 uniform float uTime;
 
 // Emitter uniforms
-uniform int uEmitterType; // 0=point, 1=sphere, 2=directional
+uniform int uEmitterType; // 0=point, 1=sphere, 2=directional, 3=box, 4=cylinder, 5=cone, 6=torus, 7=disc, 8=line, 9=grid
 uniform vec3 uEmitterPosition;
 uniform vec3 uEmitterDirection;
 uniform float uEmitterSpeed;
 uniform float uEmitterRadius;
+uniform vec3 uEmitterSize;
+uniform float uEmitterHeight;
+uniform float uEmitterAngle;
+uniform float uEmitterMajorRadius;
+uniform float uEmitterMinorRadius;
+uniform vec3 uEmitterEndPoint;
 
 // Hash function for pseudo-random
 float hash(vec2 p) {
@@ -21,6 +29,8 @@ vec3 randomSpherePoint(vec2 uv, float t) {
   float s = sqrt(1.0 - u * u);
   return vec3(s * cos(theta), u, s * sin(theta));
 }
+
+${emitterFunctions}
 
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution.xy;
@@ -43,13 +53,34 @@ void main() {
     } else if (uEmitterType == 1) {
       // Sphere emitter
       newPos = uEmitterPosition + randomSpherePoint(uv, seed) * uEmitterRadius;
-    } else {
+    } else if (uEmitterType == 2) {
       // Directional emitter - disk perpendicular to direction
       vec3 right = normalize(cross(uEmitterDirection, vec3(0.0, 1.0, 0.001)));
       vec3 up = cross(right, uEmitterDirection);
       float angle = hash(uv + seed) * 6.28318;
       float radius = sqrt(hash(uv * 2.3 + seed)) * uEmitterRadius;
       newPos = uEmitterPosition + right * cos(angle) * radius + up * sin(angle) * radius;
+    } else if (uEmitterType == 3) {
+      // Box emitter
+      newPos = uEmitterPosition + emitBox(uv, seed, uEmitterSize);
+    } else if (uEmitterType == 4) {
+      // Cylinder emitter
+      newPos = uEmitterPosition + emitCylinder(uv, seed, uEmitterRadius, uEmitterHeight);
+    } else if (uEmitterType == 5) {
+      // Cone emitter
+      newPos = uEmitterPosition + emitCone(uv, seed, uEmitterAngle, uEmitterHeight);
+    } else if (uEmitterType == 6) {
+      // Torus emitter
+      newPos = uEmitterPosition + emitTorus(uv, seed, uEmitterMajorRadius, uEmitterMinorRadius);
+    } else if (uEmitterType == 7) {
+      // Disc emitter
+      newPos = uEmitterPosition + emitDisc(uv, seed, uEmitterRadius);
+    } else if (uEmitterType == 8) {
+      // Line emitter
+      newPos = emitLine(uv, seed, uEmitterPosition, uEmitterEndPoint);
+    } else if (uEmitterType == 9) {
+      // Grid emitter
+      newPos = uEmitterPosition + emitGrid(uv, seed, 0.5, uEmitterRadius * 4.0);
     }
 
     // Random life duration

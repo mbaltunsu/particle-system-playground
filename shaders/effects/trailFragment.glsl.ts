@@ -1,4 +1,6 @@
 export const trailFragmentShader = /* glsl */ `
+uniform vec3 uTrailColor;
+
 varying float vAlpha;
 varying float vLife;
 
@@ -9,7 +11,7 @@ void main() {
 
   if (alpha < 0.005) discard;
 
-  vec3 color = vec3(0.1, 0.4, 0.9) * vLife + vec3(0.0, 0.2, 0.4);
+  vec3 color = uTrailColor * vLife + uTrailColor * 0.4;
 
   gl_FragColor = vec4(color * 0.3, alpha * 0.08);
 }

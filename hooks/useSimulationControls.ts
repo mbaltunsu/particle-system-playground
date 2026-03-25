@@ -3,7 +3,9 @@
 import { useRef, useCallback, useEffect } from 'react';
 import { useControls, folder } from 'leva';
 import { DEFAULTS } from '@/lib/constants';
-import { EmitterType } from '@/lib/types';
+import { EmitterType, ResolutionPresetKey } from '@/lib/types';
+import { BUILT_IN_PRESETS } from '@/lib/presets';
+import { PALETTE_NAMES } from '@/lib/color-palettes';
 
 export interface SimulationState {
   gravity: number;
@@ -16,18 +18,54 @@ export interface SimulationState {
   emitterType: number;
   emitterSpeed: number;
   emitterRadius: number;
+  emitterHeight: number;
+  emitterAngle: number;
+  emitterMajorRadius: number;
+  emitterMinorRadius: number;
+  simulationSpeed: number;
+  drag: number;
+  windStrength: number;
+  windDirectionX: number;
+  windDirectionY: number;
+  windDirectionZ: number;
+  attractorStrength: number;
+  attractorX: number;
+  attractorY: number;
+  attractorZ: number;
+  turbulenceOctaves: number;
+  turbulenceStrength: number;
   shockwaveActive: number;
   shockwaveRadius: number;
   shockwaveStrength: number;
   explosionActive: number;
   explosionStrength: number;
+  collider0Type: number;
+  collider0PositionY: number;
+  collider0Size: number;
+  collider0Restitution: number;
+  collider1Type: number;
+  collider1PositionX: number;
+  collider1PositionY: number;
+  collider1PositionZ: number;
+  collider1Size: number;
+  collider1Restitution: number;
+  simulationMode: number;
+  boidSeparation: number;
+  boidAlignment: number;
+  boidCohesion: number;
+  boidRadius: number;
+  boidSampleCount: number;
+  nBodyStrength: number;
+  nBodySoftening: number;
+  nBodySampleCount: number;
 }
 
 const EMITTER_MAP: Record<EmitterType, number> = {
-  point: 0,
-  sphere: 1,
-  directional: 2,
+  point: 0, sphere: 1, directional: 2, box: 3, cylinder: 4,
+  cone: 5, torus: 6, disc: 7, line: 8, grid: 9,
 };
+
+const PRESET_NAMES = Object.keys(BUILT_IN_PRESETS);
 
 export function useSimulationControls() {
   const stateRef = useRef<SimulationState>({
@@ -41,17 +79,68 @@ export function useSimulationControls() {
     emitterType: 0,
     emitterSpeed: DEFAULTS.emitterSpeed,
     emitterRadius: DEFAULTS.emitterRadius,
+    emitterHeight: 2.0,
+    emitterAngle: 0.8,
+    emitterMajorRadius: 2.0,
+    emitterMinorRadius: 0.5,
+    simulationSpeed: DEFAULTS.simulationSpeed,
+    drag: 1.0,
+    windStrength: 0,
+    windDirectionX: 1,
+    windDirectionY: 0,
+    windDirectionZ: 0,
+    attractorStrength: 0,
+    attractorX: 3,
+    attractorY: 0,
+    attractorZ: 0,
+    turbulenceOctaves: 0,
+    turbulenceStrength: 0.5,
     shockwaveActive: 0,
     shockwaveRadius: 0,
     shockwaveStrength: 0,
     explosionActive: 0,
     explosionStrength: 0,
+    collider0Type: 0,
+    collider0PositionY: -3,
+    collider0Size: 1,
+    collider0Restitution: 0.5,
+    collider1Type: 0,
+    collider1PositionX: 0,
+    collider1PositionY: 0,
+    collider1PositionZ: 0,
+    collider1Size: 1,
+    collider1Restitution: 0.5,
+    simulationMode: 0,
+    boidSeparation: 2.0,
+    boidAlignment: 1.0,
+    boidCohesion: 1.0,
+    boidRadius: 3.0,
+    boidSampleCount: 128,
+    nBodyStrength: 0.5,
+    nBodySoftening: 0.5,
+    nBodySampleCount: 128,
   });
 
   const shockwaveTimerRef = useRef<number | null>(null);
   const explosionTimerRef = useRef<number | null>(null);
 
-  const controls = useControls({
+  const [controls, set] = useControls(() => ({
+    Mode: folder({
+      simulationMode: { value: 0, options: { Particles: 0, Boids: 1, 'N-Body': 2, Cloth: 3 } },
+    }),
+    Presets: folder({
+      preset: {
+        value: 'Default',
+        options: PRESET_NAMES,
+      },
+    }),
+    Simulation: folder({
+      simulationSpeed: { value: DEFAULTS.simulationSpeed, min: 0.1, max: 3, step: 0.1 },
+      resolution: {
+        value: DEFAULTS.resolutionPreset as string,
+        options: ['low', 'medium', 'high', 'ultra'],
+      },
+    }),
     Forces: folder({
       gravity: { value: DEFAULTS.gravity, min: -3, max: 3, step: 0.01 },
       repulsion: { value: DEFAULTS.repulsion, min: 0, max: 3, step: 0.01 },
@@ -59,16 +148,121 @@ export function useSimulationControls() {
       noiseSpeed: { value: DEFAULTS.noiseSpeed, min: 0, max: 2, step: 0.01 },
       magneticStrength: { value: DEFAULTS.magneticStrength, min: 0, max: 3, step: 0.01 },
       vortexStrength: { value: DEFAULTS.vortexStrength, min: 0, max: 3, step: 0.01 },
+      drag: { value: 1.0, min: 0, max: 5, step: 0.01 },
+      windStrength: { value: 0, min: 0, max: 3, step: 0.01 },
+      windDirectionX: { value: 1, min: -1, max: 1, step: 0.1 },
+      windDirectionY: { value: 0, min: -1, max: 1, step: 0.1 },
+      windDirectionZ: { value: 0, min: -1, max: 1, step: 0.1 },
+      attractorStrength: { value: 0, min: 0, max: 3, step: 0.01 },
+      attractorX: { value: 3, min: -10, max: 10, step: 0.1 },
+      attractorY: { value: 0, min: -10, max: 10, step: 0.1 },
+      attractorZ: { value: 0, min: -10, max: 10, step: 0.1 },
+      turbulenceOctaves: { value: 0, min: 0, max: 4, step: 1 },
+      turbulenceStrength: { value: 0.5, min: 0, max: 3, step: 0.01 },
+    }),
+    Boids: folder({
+      boidSeparation: { value: 2.0, min: 0, max: 5, step: 0.1 },
+      boidAlignment: { value: 1.0, min: 0, max: 3, step: 0.1 },
+      boidCohesion: { value: 1.0, min: 0, max: 3, step: 0.1 },
+      boidRadius: { value: 3.0, min: 0.5, max: 10, step: 0.1 },
+      boidSampleCount: { value: 128, options: [64, 128, 256, 512] },
+    }),
+    'N-Body': folder({
+      nBodyStrength: { value: 0.5, min: 0, max: 3, step: 0.01 },
+      nBodySoftening: { value: 0.5, min: 0.01, max: 2, step: 0.01 },
+      nBodySampleCount: { value: 128, options: [64, 128, 256, 512] },
     }),
     Particles: folder({
       lifeDecay: { value: DEFAULTS.lifeDecay, min: 0.01, max: 1, step: 0.01 },
     }),
     Emitter: folder({
-      emitterType: { value: 'point' as EmitterType, options: ['point', 'sphere', 'directional'] },
+      emitterType: { value: 'point' as EmitterType, options: ['point', 'sphere', 'directional', 'box', 'cylinder', 'cone', 'torus', 'disc', 'line', 'grid'] },
       emitterSpeed: { value: DEFAULTS.emitterSpeed, min: 0.1, max: 10, step: 0.1 },
       emitterRadius: { value: DEFAULTS.emitterRadius, min: 0.1, max: 5, step: 0.1 },
+      emitterHeight: { value: 2.0, min: 0.1, max: 10, step: 0.1 },
+      emitterAngle: { value: 0.8, min: 0.1, max: 3.14, step: 0.01 },
+      emitterMajorRadius: { value: 2.0, min: 0.1, max: 5, step: 0.1 },
+      emitterMinorRadius: { value: 0.5, min: 0.1, max: 2, step: 0.1 },
     }),
-  });
+    Collision: folder({
+      collider0Type: { value: 0, options: { None: 0, 'Ground Plane': 3, Sphere: 1, Box: 2 } },
+      collider0PositionY: { value: -3, min: -10, max: 10, step: 0.1 },
+      collider0Size: { value: 1, min: 0.1, max: 5, step: 0.1 },
+      collider0Restitution: { value: 0.5, min: 0, max: 1, step: 0.01 },
+      collider1Type: { value: 0, options: { None: 0, Sphere: 1, Box: 2, Cylinder: 4, Torus: 5 } },
+      collider1PositionX: { value: 0, min: -10, max: 10, step: 0.1 },
+      collider1PositionY: { value: 0, min: -10, max: 10, step: 0.1 },
+      collider1PositionZ: { value: 0, min: -10, max: 10, step: 0.1 },
+      collider1Size: { value: 1, min: 0.1, max: 5, step: 0.1 },
+      collider1Restitution: { value: 0.5, min: 0, max: 1, step: 0.01 },
+    }),
+    Rendering: folder({
+      colorPalette: { value: 'plasma', options: PALETTE_NAMES },
+    }),
+  }));
+
+  // Track previous preset to detect changes
+  const prevPresetRef = useRef<string>(controls.preset as string);
+
+  // Load preset values when preset dropdown changes
+  useEffect(() => {
+    const currentPreset = controls.preset as string;
+    if (currentPreset !== prevPresetRef.current) {
+      prevPresetRef.current = currentPreset;
+      const presetData = BUILT_IN_PRESETS[currentPreset];
+      if (presetData) {
+        const v = presetData.values;
+        set({
+          simulationMode: v.simulationMode,
+          gravity: v.gravity,
+          repulsion: v.repulsion,
+          noiseScale: v.noiseScale,
+          noiseSpeed: v.noiseSpeed,
+          magneticStrength: v.magneticStrength,
+          vortexStrength: v.vortexStrength,
+          drag: v.drag,
+          windStrength: v.windStrength,
+          windDirectionX: v.windDirectionX,
+          windDirectionY: v.windDirectionY,
+          windDirectionZ: v.windDirectionZ,
+          attractorStrength: v.attractorStrength,
+          attractorX: v.attractorX,
+          attractorY: v.attractorY,
+          attractorZ: v.attractorZ,
+          turbulenceOctaves: v.turbulenceOctaves,
+          turbulenceStrength: v.turbulenceStrength,
+          lifeDecay: v.lifeDecay,
+          emitterType: v.emitterType,
+          emitterSpeed: v.emitterSpeed,
+          emitterRadius: v.emitterRadius,
+          emitterHeight: v.emitterHeight,
+          emitterAngle: v.emitterAngle,
+          emitterMajorRadius: v.emitterMajorRadius,
+          emitterMinorRadius: v.emitterMinorRadius,
+          simulationSpeed: v.simulationSpeed,
+          collider0Type: v.collider0Type,
+          collider0PositionY: v.collider0PositionY,
+          collider0Size: v.collider0Size,
+          collider0Restitution: v.collider0Restitution,
+          collider1Type: v.collider1Type,
+          collider1PositionX: v.collider1PositionX,
+          collider1PositionY: v.collider1PositionY,
+          collider1PositionZ: v.collider1PositionZ,
+          collider1Size: v.collider1Size,
+          collider1Restitution: v.collider1Restitution,
+          boidSeparation: v.boidSeparation,
+          boidAlignment: v.boidAlignment,
+          boidCohesion: v.boidCohesion,
+          boidRadius: v.boidRadius,
+          boidSampleCount: v.boidSampleCount,
+          nBodyStrength: v.nBodyStrength,
+          nBodySoftening: v.nBodySoftening,
+          nBodySampleCount: v.nBodySampleCount,
+          colorPalette: v.colorPalette,
+        });
+      }
+    }
+  }, [controls.preset, set]);
 
   // Sync Leva controls to mutable ref (no re-renders in R3F)
   useEffect(() => {
@@ -83,6 +277,41 @@ export function useSimulationControls() {
     s.emitterType = EMITTER_MAP[controls.emitterType as EmitterType] ?? 0;
     s.emitterSpeed = controls.emitterSpeed;
     s.emitterRadius = controls.emitterRadius;
+    s.emitterHeight = controls.emitterHeight;
+    s.emitterAngle = controls.emitterAngle;
+    s.emitterMajorRadius = controls.emitterMajorRadius;
+    s.emitterMinorRadius = controls.emitterMinorRadius;
+    s.simulationSpeed = controls.simulationSpeed;
+    s.drag = controls.drag;
+    s.windStrength = controls.windStrength;
+    s.windDirectionX = controls.windDirectionX;
+    s.windDirectionY = controls.windDirectionY;
+    s.windDirectionZ = controls.windDirectionZ;
+    s.attractorStrength = controls.attractorStrength;
+    s.attractorX = controls.attractorX;
+    s.attractorY = controls.attractorY;
+    s.attractorZ = controls.attractorZ;
+    s.turbulenceOctaves = controls.turbulenceOctaves;
+    s.turbulenceStrength = controls.turbulenceStrength;
+    s.collider0Type = controls.collider0Type;
+    s.collider0PositionY = controls.collider0PositionY;
+    s.collider0Size = controls.collider0Size;
+    s.collider0Restitution = controls.collider0Restitution;
+    s.collider1Type = controls.collider1Type;
+    s.collider1PositionX = controls.collider1PositionX;
+    s.collider1PositionY = controls.collider1PositionY;
+    s.collider1PositionZ = controls.collider1PositionZ;
+    s.collider1Size = controls.collider1Size;
+    s.collider1Restitution = controls.collider1Restitution;
+    s.simulationMode = controls.simulationMode;
+    s.boidSeparation = controls.boidSeparation;
+    s.boidAlignment = controls.boidAlignment;
+    s.boidCohesion = controls.boidCohesion;
+    s.boidRadius = controls.boidRadius;
+    s.boidSampleCount = controls.boidSampleCount;
+    s.nBodyStrength = controls.nBodyStrength;
+    s.nBodySoftening = controls.nBodySoftening;
+    s.nBodySampleCount = controls.nBodySampleCount;
   });
 
   const triggerShockwave = useCallback(() => {
@@ -135,5 +364,7 @@ export function useSimulationControls() {
     triggerShockwave,
     triggerExplosion,
     controls,
+    resolutionPreset: (controls.resolution as ResolutionPresetKey) ?? 'medium',
+    colorPalette: (controls.colorPalette as string) ?? 'plasma',
   };
 }

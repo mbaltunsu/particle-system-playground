@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { GPUComputationRenderer } from 'three/examples/jsm/misc/GPUComputationRenderer.js';
 import { velocitySimulationShader } from '@/shaders/compute/velocitySimulation.glsl';
 import { positionSimulationShader } from '@/shaders/compute/positionSimulation.glsl';
-import { TEXTURE_SIZE } from '@/lib/constants';
 
 export interface GPUComputeInstance {
   gpuCompute: GPUComputationRenderer;
@@ -36,8 +35,8 @@ function fillVelocityTexture(texture: THREE.DataTexture) {
   }
 }
 
-export function createGPUCompute(renderer: THREE.WebGLRenderer): GPUComputeInstance {
-  const gpuCompute = new GPUComputationRenderer(TEXTURE_SIZE, TEXTURE_SIZE, renderer);
+export function createGPUCompute(renderer: THREE.WebGLRenderer, textureSize: number): GPUComputeInstance {
+  const gpuCompute = new GPUComputationRenderer(textureSize, textureSize, renderer);
 
   if (!renderer.capabilities.isWebGL2) {
     gpuCompute.setDataType(THREE.HalfFloatType);
@@ -73,6 +72,12 @@ export function createGPUCompute(renderer: THREE.WebGLRenderer): GPUComputeInsta
   posUniforms.uEmitterDirection = { value: new THREE.Vector3(0, 1, 0) };
   posUniforms.uEmitterSpeed = { value: 2.0 };
   posUniforms.uEmitterRadius = { value: 1.0 };
+  posUniforms.uEmitterSize = { value: new THREE.Vector3(2, 2, 2) };
+  posUniforms.uEmitterHeight = { value: 2.0 };
+  posUniforms.uEmitterAngle = { value: 0.8 };
+  posUniforms.uEmitterMajorRadius = { value: 2.0 };
+  posUniforms.uEmitterMinorRadius = { value: 0.5 };
+  posUniforms.uEmitterEndPoint = { value: new THREE.Vector3(3, 3, 0) };
 
   // Velocity uniforms
   const velUniforms = velocityVariable.material.uniforms;
@@ -88,8 +93,16 @@ export function createGPUCompute(renderer: THREE.WebGLRenderer): GPUComputeInsta
   // Emitter uniforms on velocity shader (for initial velocity on respawn)
   velUniforms.uTime = { value: 0 };
   velUniforms.uEmitterType = { value: 0 };
+  velUniforms.uEmitterPosition = { value: new THREE.Vector3(0, 0, 0) };
   velUniforms.uEmitterDirection = { value: new THREE.Vector3(0, 1, 0) };
   velUniforms.uEmitterSpeed = { value: 2.0 };
+  velUniforms.uEmitterRadius = { value: 1.0 };
+  velUniforms.uEmitterSize = { value: new THREE.Vector3(2, 2, 2) };
+  velUniforms.uEmitterHeight = { value: 2.0 };
+  velUniforms.uEmitterAngle = { value: 0.8 };
+  velUniforms.uEmitterMajorRadius = { value: 2.0 };
+  velUniforms.uEmitterMinorRadius = { value: 0.5 };
+  velUniforms.uEmitterEndPoint = { value: new THREE.Vector3(3, 3, 0) };
 
   // Effect uniforms
   velUniforms.uShockwaveActive = { value: 0 };
@@ -99,6 +112,37 @@ export function createGPUCompute(renderer: THREE.WebGLRenderer): GPUComputeInsta
   velUniforms.uExplosionActive = { value: 0 };
   velUniforms.uExplosionOrigin = { value: new THREE.Vector3(0, 0, 0) };
   velUniforms.uExplosionStrength = { value: 0 };
+
+  // New force uniforms
+  velUniforms.uDrag = { value: 1.0 };
+  velUniforms.uWindDirection = { value: new THREE.Vector3(1, 0, 0) };
+  velUniforms.uWindStrength = { value: 0 };
+  velUniforms.uAttractorPosition = { value: new THREE.Vector3(3, 0, 0) };
+  velUniforms.uAttractorStrength = { value: 0 };
+  velUniforms.uTurbulenceOctaves = { value: 0 };
+  velUniforms.uTurbulenceStrength = { value: 0 };
+
+  // Simulation mode uniforms
+  velUniforms.uSimulationMode = { value: 0 };
+  velUniforms.uBoidSeparation = { value: 2.0 };
+  velUniforms.uBoidAlignment = { value: 1.0 };
+  velUniforms.uBoidCohesion = { value: 1.0 };
+  velUniforms.uBoidRadius = { value: 3.0 };
+  velUniforms.uBoidSampleCount = { value: 128 };
+  velUniforms.uNBodyStrength = { value: 0.5 };
+  velUniforms.uNBodySoftening = { value: 0.5 };
+  velUniforms.uNBodySampleCount = { value: 128 };
+  velUniforms.uTextureSize = { value: textureSize };
+
+  // Collider uniforms
+  velUniforms.uCollider0Type = { value: 0 };
+  velUniforms.uCollider0Position = { value: new THREE.Vector3(0, -2, 0) };
+  velUniforms.uCollider0Size = { value: new THREE.Vector3(1, 1, 1) };
+  velUniforms.uCollider0Restitution = { value: 0.5 };
+  velUniforms.uCollider1Type = { value: 0 };
+  velUniforms.uCollider1Position = { value: new THREE.Vector3(0, 0, 0) };
+  velUniforms.uCollider1Size = { value: new THREE.Vector3(1, 1, 1) };
+  velUniforms.uCollider1Restitution = { value: 0.5 };
 
   const error = gpuCompute.init();
   if (error !== null) {

@@ -2,20 +2,23 @@
 
 import { createContext, useContext, type ReactNode } from 'react';
 import { useSimulationControls, type SimulationState } from '@/hooks/useSimulationControls';
+import type { ResolutionPresetKey } from '@/lib/types';
 
 interface SimulationContextValue {
   controlsRef: React.RefObject<SimulationState | null>;
   triggerShockwave: () => void;
   triggerExplosion: () => void;
+  resolutionPreset: ResolutionPresetKey;
+  colorPalette: string;
 }
 
 const SimulationContext = createContext<SimulationContextValue | null>(null);
 
 export function SimulationProvider({ children }: { children: ReactNode }) {
-  const { controlsRef, triggerShockwave, triggerExplosion } = useSimulationControls();
+  const { controlsRef, triggerShockwave, triggerExplosion, resolutionPreset, colorPalette } = useSimulationControls();
 
   return (
-    <SimulationContext.Provider value={{ controlsRef, triggerShockwave, triggerExplosion }}>
+    <SimulationContext.Provider value={{ controlsRef, triggerShockwave, triggerExplosion, resolutionPreset, colorPalette }}>
       {children}
     </SimulationContext.Provider>
   );

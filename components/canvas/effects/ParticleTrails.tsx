@@ -1,29 +1,34 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { trailVertexShader } from '@/shaders/effects/trailVertex.glsl';
 import { trailFragmentShader } from '@/shaders/effects/trailFragment.glsl';
-import { MAX_PARTICLES, TEXTURE_SIZE, DEFAULTS } from '@/lib/constants';
+import { DEFAULTS } from '@/lib/constants';
+import { COLOR_PALETTES } from '@/lib/color-palettes';
 
 interface ParticleTrailsProps {
   getPositionTexture: () => THREE.Texture | null;
   getVelocityTexture: () => THREE.Texture | null;
+  textureSize: number;
+  maxParticles: number;
+  colorPalette?: string;
 }
 
-export default function ParticleTrails({ getPositionTexture, getVelocityTexture }: ParticleTrailsProps) {
+export default function ParticleTrails({ getPositionTexture, getVelocityTexture, textureSize, maxParticles, colorPalette = 'plasma' }: ParticleTrailsProps) {
   const { viewport } = useThree();
   const trailCount = DEFAULTS.trailLength;
+  const lastPaletteRef = useRef(colorPalette);
 
   const { trailIndices, trailSlots, positions } = useMemo(() => {
-    const totalPoints = MAX_PARTICLES * trailCount;
+    const totalPoints = maxParticles * trailCount;
     const indices = new Float32Array(totalPoints);
     const slots = new Float32Array(totalPoints);
 
     for (let t = 0; t < trailCount; t++) {
-      for (let i = 0; i < MAX_PARTICLES; i++) {
-        const idx = t * MAX_PARTICLES + i;
+      for (let i = 0; i < maxParticles; i++) {
+        const idx = t * maxParticles + i;
         indices[idx] = i;
         slots[idx] = t / (trailCount - 1); // 0.0 = newest, 1.0 = oldest
       }
@@ -33,27 +38,28 @@ export default function ParticleTrails({ getPositionTexture, getVelocityTexture 
       trailSlots: slots,
       positions: new Float32Array(totalPoints * 3),
     };
-  }, [trailCount]);
+  }, [trailCount, maxParticles]);
 
-  const shaderMaterial = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        uniforms: {
-          tPosition: { value: null },
-          tVelocity: { value: null },
-          uTextureSize: { value: TEXTURE_SIZE },
-          uPixelRatio: { value: 1 },
-          uTrailOpacity: { value: 0.2 },
-          uDeltaTime: { value: 0.016 },
-        },
-        vertexShader: trailVertexShader,
-        fragmentShader: trailFragmentShader,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      }),
-    []
-  );
+  const shaderMaterial = useMemo(() => {
+    const palette = COLOR_PALETTES[colorPalette] ?? COLOR_PALETTES.plasma;
+    const stop = palette.stops[2];
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        tPosition: { value: null },
+        tVelocity: { value: null },
+        uTextureSize: { value: textureSize },
+        uPixelRatio: { value: 1 },
+        uTrailOpacity: { value: 0.2 },
+        uDeltaTime: { value: 0.016 },
+        uTrailColor: { value: new THREE.Vector3(stop[0], stop[1], stop[2]) },
+      },
+      vertexShader: trailVertexShader,
+      fragmentShader: trailFragmentShader,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+  }, [textureSize]);
 
   useFrame((_, delta) => {
     const posTex = getPositionTexture();
@@ -63,6 +69,13 @@ export default function ParticleTrails({ getPositionTexture, getVelocityTexture 
       shaderMaterial.uniforms.tVelocity.value = velTex;
       shaderMaterial.uniforms.uPixelRatio.value = viewport.dpr;
       shaderMaterial.uniforms.uDeltaTime.value = Math.min(delta, 0.05);
+    }
+
+    if (lastPaletteRef.current !== colorPalette) {
+      lastPaletteRef.current = colorPalette;
+      const palette = COLOR_PALETTES[colorPalette] ?? COLOR_PALETTES.plasma;
+      const stop = palette.stops[2];
+      shaderMaterial.uniforms.uTrailColor.value = new THREE.Vector3(stop[0], stop[1], stop[2]);
     }
   });
 

@@ -1,5 +1,15 @@
-export const MAX_PARTICLES = 16384;
-export const TEXTURE_SIZE = 128; // sqrt(16384)
+import { RESOLUTION_PRESETS } from './gpu-capabilities';
+
+export function getParticleConfig(preset: string) {
+  const key = preset as keyof typeof RESOLUTION_PRESETS;
+  const p = RESOLUTION_PRESETS[key] ?? RESOLUTION_PRESETS.medium;
+  return { maxParticles: p.maxParticles, textureSize: p.textureSize };
+}
+
+const defaultConfig = getParticleConfig('medium');
+
+export const MAX_PARTICLES = defaultConfig.maxParticles;
+export const TEXTURE_SIZE = defaultConfig.textureSize;
 
 export const DEFAULTS = {
   particleCount: 10000,
@@ -18,4 +28,7 @@ export const DEFAULTS = {
   trailLength: 3,
   bloomIntensity: 0.3,
   bloomThreshold: 0.8,
+
+  resolutionPreset: 'medium' as const,
+  simulationSpeed: 1.0,
 } as const;

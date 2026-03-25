@@ -1,4 +1,6 @@
-export type EmitterType = 'point' | 'sphere' | 'directional';
+export type EmitterType = 'point' | 'sphere' | 'directional' | 'box' | 'cylinder' | 'cone' | 'torus' | 'disc' | 'line' | 'grid';
+
+export type ResolutionPresetKey = 'low' | 'medium' | 'high' | 'ultra';
 
 export interface ForceParams {
   gravity: number;
@@ -21,6 +23,8 @@ export interface SimulationControls extends ForceParams {
   emitterSpeed: number;
   emitterRadius: number;
   emitterType: EmitterType;
+  simulationSpeed: number;
+  resolutionPreset: ResolutionPresetKey;
 }
 
 export interface EffectTrigger {

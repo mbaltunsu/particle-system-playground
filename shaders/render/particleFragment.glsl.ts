@@ -1,4 +1,6 @@
 export const particleFragmentShader = /* glsl */ `
+uniform vec3 uColorStops[5];
+
 varying float vLife;
 varying float vEnergy;
 varying float vSpeed;
@@ -12,18 +14,22 @@ void main() {
 
   if (alpha < 0.01) discard;
 
-  // Color gradient: blue (cold) -> cyan -> white -> orange -> red (hot)
+  // Color gradient from palette
   float energy = clamp(vEnergy + vSpeed * 0.1, 0.0, 1.0);
-
+  float t = energy * 4.0;
+  int idx = int(floor(t));
+  float frac = fract(t);
   vec3 color;
-  if (energy < 0.25) {
-    color = mix(vec3(0.05, 0.15, 0.6), vec3(0.0, 0.7, 1.0), energy * 4.0);
-  } else if (energy < 0.5) {
-    color = mix(vec3(0.0, 0.7, 1.0), vec3(0.7, 1.0, 1.0), (energy - 0.25) * 4.0);
-  } else if (energy < 0.75) {
-    color = mix(vec3(0.7, 1.0, 1.0), vec3(1.0, 0.6, 0.1), (energy - 0.5) * 4.0);
+  if (idx >= 4) {
+    color = uColorStops[4];
+  } else if (idx == 3) {
+    color = mix(uColorStops[3], uColorStops[4], frac);
+  } else if (idx == 2) {
+    color = mix(uColorStops[2], uColorStops[3], frac);
+  } else if (idx == 1) {
+    color = mix(uColorStops[1], uColorStops[2], frac);
   } else {
-    color = mix(vec3(1.0, 0.6, 0.1), vec3(1.0, 0.2, 0.05), (energy - 0.75) * 4.0);
+    color = mix(uColorStops[0], uColorStops[1], frac);
   }
 
   // Speed brightens (subtle)

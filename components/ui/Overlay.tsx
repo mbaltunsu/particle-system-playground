@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { useSimulation } from '@/components/providers/SimulationProvider';
+import { RESOLUTION_PRESETS } from '@/lib/gpu-capabilities';
 
 const TITLE = 'PARTICLE PHYSICS PLAYGROUND';
 
@@ -9,6 +11,10 @@ export default function Overlay() {
   const [fps, setFps] = useState(60);
   const frameTimesRef = useRef<number[]>([]);
   const lastTimeRef = useRef(performance.now());
+  const { resolutionPreset } = useSimulation();
+
+  const preset = RESOLUTION_PRESETS[resolutionPreset] ?? RESOLUTION_PRESETS.medium;
+  const maxParticles = preset.maxParticles;
 
   useEffect(() => {
     let animId: number;
@@ -68,7 +74,9 @@ export default function Overlay() {
             {fps}
             <span className="ml-1 text-[10px] text-cyan-400/50">FPS</span>
           </div>
-          <div className="mt-1 text-[10px] text-cyan-400/30">16,384 PARTICLES</div>
+          <div className="mt-1 text-[10px] text-cyan-400/30">
+            {maxParticles.toLocaleString()} PARTICLES
+          </div>
         </motion.div>
       </div>
 

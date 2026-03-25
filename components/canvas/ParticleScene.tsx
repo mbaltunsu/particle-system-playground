@@ -13,11 +13,17 @@ import ShockwaveBurst from '@/components/canvas/effects/ShockwaveBurst';
 import ExplosionEffect from '@/components/canvas/effects/ExplosionEffect';
 import Overlay from '@/components/ui/Overlay';
 import EffectTriggers from '@/components/ui/EffectTriggers';
+import ExportPanel from '@/components/ui/ExportPanel';
+import { RESOLUTION_PRESETS } from '@/lib/gpu-capabilities';
 
 function SceneContents() {
-  const { controlsRef } = useSimulation();
+  const { controlsRef, resolutionPreset, colorPalette } = useSimulation();
   const positionTextureRef = useRef<THREE.Texture | null>(null);
   const velocityTextureRef = useRef<THREE.Texture | null>(null);
+
+  const preset = RESOLUTION_PRESETS[resolutionPreset] ?? RESOLUTION_PRESETS.medium;
+  const textureSize = preset.textureSize;
+  const maxParticles = preset.maxParticles;
 
   const getPositionTexture = useCallback(() => positionTextureRef.current, []);
   const getVelocityTexture = useCallback(() => velocityTextureRef.current, []);
@@ -28,10 +34,16 @@ function SceneContents() {
         controlsRef={controlsRef}
         positionTextureRef={positionTextureRef}
         velocityTextureRef={velocityTextureRef}
+        textureSize={textureSize}
+        maxParticles={maxParticles}
+        colorPalette={colorPalette}
       />
       <ParticleTrails
         getPositionTexture={getPositionTexture}
         getVelocityTexture={getVelocityTexture}
+        textureSize={textureSize}
+        maxParticles={maxParticles}
+        colorPalette={colorPalette}
       />
       <ShockwaveBurst />
       <ExplosionEffect />
@@ -66,6 +78,9 @@ export default function ParticleScene() {
         </Canvas>
         <Overlay />
         <EffectTriggers />
+        <ExportPanel
+          getCanvas={() => document.querySelector('canvas') as HTMLCanvasElement | null}
+        />
         <Leva
           collapsed
           theme={{
