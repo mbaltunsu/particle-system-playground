@@ -19,8 +19,8 @@ interface SimulationContextValue {
 
 const SimulationContext = createContext<SimulationContextValue | null>(null);
 
-export function SimulationProvider({ children }: { children: ReactNode }) {
-  const { controlsRef, triggerShockwave, triggerExplosion, levaSet, resolutionPreset, colorPalette, emitters, setEmitters, emittersRef } = useSimulationControls();
+export function SimulationProvider({ children, initialPreset }: { children: ReactNode; initialPreset?: string }) {
+  const { controlsRef, triggerShockwave, triggerExplosion, levaSet, resolutionPreset, colorPalette, emitters, setEmitters, emittersRef } = useSimulationControls(initialPreset);
 
   return (
     <SimulationContext.Provider value={{ controlsRef, triggerShockwave, triggerExplosion, levaSet, resolutionPreset, colorPalette, emitters, setEmitters, emittersRef }}>

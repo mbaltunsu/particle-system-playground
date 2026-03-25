@@ -137,9 +137,13 @@ function ParticleSceneInner() {
   );
 }
 
-export default function ParticleScene() {
+interface ParticleSceneProps {
+  initialPreset?: string;
+}
+
+export default function ParticleScene({ initialPreset }: ParticleSceneProps) {
   return (
-    <SimulationProvider>
+    <SimulationProvider initialPreset={initialPreset}>
       <ParticleSceneInner />
     </SimulationProvider>
   );

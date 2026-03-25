@@ -60,7 +60,7 @@ export interface SimulationState {
 
 const PRESET_NAMES = Object.keys(BUILT_IN_PRESETS);
 
-export function useSimulationControls() {
+export function useSimulationControls(initialPreset?: string) {
   const stateRef = useRef<SimulationState>({
     gravity: DEFAULTS.gravity,
     repulsion: DEFAULTS.repulsion,
@@ -128,7 +128,7 @@ export function useSimulationControls() {
     Simulation: folder({
       simulationSpeed: { value: DEFAULTS.simulationSpeed, min: 0.1, max: 3, step: 0.1, label: 'Time Scale' },
       resolution: {
-        value: DEFAULTS.resolutionPreset as string,
+        value: (initialPreset || DEFAULTS.resolutionPreset) as string,
         options: {
           'Low (4K)': 'low',
           'Medium (16K)': 'medium',
