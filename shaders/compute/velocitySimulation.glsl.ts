@@ -16,18 +16,9 @@ uniform float uVortexStrength;
 uniform vec3 uGravityCenter;
 uniform float uTime;
 
-// Emitter uniforms (shared with position shader)
-uniform int uEmitterType;
-uniform vec3 uEmitterPosition;
-uniform vec3 uEmitterDirection;
-uniform float uEmitterSpeed;
-uniform float uEmitterRadius;
-uniform vec3 uEmitterSize;
-uniform float uEmitterHeight;
-uniform float uEmitterAngle;
-uniform float uEmitterMajorRadius;
-uniform float uEmitterMinorRadius;
-uniform vec3 uEmitterEndPoint;
+// Multi-emitter DataTexture
+uniform sampler2D tEmitterData;
+uniform int uNumEmitters;
 
 uniform float uShockwaveActive;
 uniform vec3 uShockwaveOrigin;
@@ -96,50 +87,71 @@ void main() {
   // Detect respawning particle: life was <= 0 last frame, now reset to ~1.0
   // We use a high life threshold to detect freshly spawned particles
   if (life <= 0.0) {
+    // Determine which emitter this particle belongs to
+    float particleIndex = gl_FragCoord.y * resolution.x + gl_FragCoord.x;
+    int emitterIdx = int(mod(particleIndex, float(max(uNumEmitters, 1))));
+    float emitterV = (float(emitterIdx) + 0.5) / 32.0;
+
+    vec4 e0 = texture2D(tEmitterData, vec2(0.125, emitterV));
+    vec4 e1 = texture2D(tEmitterData, vec2(0.375, emitterV));
+    vec4 e2 = texture2D(tEmitterData, vec2(0.625, emitterV));
+    vec4 e3 = texture2D(tEmitterData, vec2(0.875, emitterV));
+
+    vec3 emitterPos = e0.xyz;
+    int emitterType = int(e0.w);
+    vec3 emitterDir = e1.xyz;
+    float emitterSpeed = e1.w;
+    float emitterRadius = e2.x;
+    float emitterHeight = e2.y;
+    float emitterAngle = e2.z;
+    float emitterMajorR = e2.w;
+    float emitterMinorR = e3.x;
+    vec3 emitterEndPt = e3.yzw;
+
     // Particle is dead — set initial velocity for when position shader respawns it
     vec3 newVel = vec3(0.0);
     float seed = uTime * 0.1;
 
-    if (uEmitterType == 0) {
+    if (emitterType == 0) {
       // Point emitter: random direction
-      newVel = randomSphereDir(uv, seed) * uEmitterSpeed;
-    } else if (uEmitterType == 1) {
+      newVel = randomSphereDir(uv, seed) * emitterSpeed;
+    } else if (emitterType == 1) {
       // Sphere emitter: outward from center
-      newVel = normalize(posData.xyz + vec3(0.001)) * uEmitterSpeed;
-    } else if (uEmitterType == 2) {
+      newVel = normalize(posData.xyz + vec3(0.001)) * emitterSpeed;
+    } else if (emitterType == 2) {
       // Directional emitter: along direction with spread
       vec3 spread = randomSphereDir(uv, seed) * 0.3;
-      newVel = normalize(uEmitterDirection + spread) * uEmitterSpeed;
-    } else if (uEmitterType == 3) {
+      newVel = normalize(emitterDir + spread) * emitterSpeed;
+    } else if (emitterType == 3) {
       // Box emitter: random direction velocity
-      newVel = randomSphereDir(uv, seed) * uEmitterSpeed;
-    } else if (uEmitterType == 4) {
+      newVel = randomSphereDir(uv, seed) * emitterSpeed;
+    } else if (emitterType == 4) {
       // Cylinder emitter: radially outward in xz plane
       vec3 spread = randomSphereDir(uv, seed);
       float angle = emitHash(uv + seed) * 6.28318;
-      newVel = normalize(vec3(cos(angle), 0.0, sin(angle))) * uEmitterSpeed;
-    } else if (uEmitterType == 5) {
+      newVel = normalize(vec3(cos(angle), 0.0, sin(angle))) * emitterSpeed;
+    } else if (emitterType == 5) {
       // Cone emitter: along cone surface
       vec3 spread = randomSphereDir(uv, seed);
-      newVel = normalize(vec3(spread.x, 1.0, spread.z)) * uEmitterSpeed;
-    } else if (uEmitterType == 6) {
+      newVel = normalize(vec3(spread.x, 1.0, spread.z)) * emitterSpeed;
+    } else if (emitterType == 6) {
       // Torus emitter: outward from torus center in xz
       float theta = emitHash(uv + seed) * 6.28318;
-      newVel = normalize(vec3(cos(theta), 0.0, sin(theta))) * uEmitterSpeed;
-    } else if (uEmitterType == 7) {
+      newVel = normalize(vec3(cos(theta), 0.0, sin(theta))) * emitterSpeed;
+    } else if (emitterType == 7) {
       // Disc emitter: upward with slight spread
       vec3 spread = randomSphereDir(uv, seed);
-      newVel = normalize(vec3(spread.x * 0.3, 1.0, spread.z * 0.3)) * uEmitterSpeed;
-    } else if (uEmitterType == 8) {
+      newVel = normalize(vec3(spread.x * 0.3, 1.0, spread.z * 0.3)) * emitterSpeed;
+    } else if (emitterType == 8) {
       // Line emitter: perpendicular to line direction with spread
-      vec3 lineDir = normalize(uEmitterEndPoint - uEmitterPosition + vec3(0.001));
+      vec3 lineDir = normalize(emitterEndPt - emitterPos + vec3(0.001));
       vec3 spread = randomSphereDir(uv, seed);
       vec3 perp = normalize(spread - lineDir * dot(spread, lineDir));
-      newVel = perp * uEmitterSpeed;
-    } else if (uEmitterType == 9) {
+      newVel = perp * emitterSpeed;
+    } else if (emitterType == 9) {
       // Grid emitter: upward
       vec3 spread = randomSphereDir(uv, seed);
-      newVel = vec3(spread.x * 0.2, 1.0, spread.z * 0.2) * uEmitterSpeed;
+      newVel = vec3(spread.x * 0.2, 1.0, spread.z * 0.2) * emitterSpeed;
     }
 
     gl_FragColor = vec4(newVel, velData.w);

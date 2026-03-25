@@ -31,6 +31,20 @@ body {
   --leva-fonts-mono: var(--font-geist-mono), monospace !important;
 }
 
+/* Leva panel resize and label truncation */
+[data-leva-theme] > div {
+  resize: horizontal !important;
+  overflow: auto !important;
+  min-width: 280px !important;
+  max-width: 600px !important;
+}
+
+[data-leva-theme] label {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 4px;

@@ -8,6 +8,7 @@ import { particleVertexShader } from '@/shaders/render/particleVertex.glsl';
 import { particleFragmentShader } from '@/shaders/render/particleFragment.glsl';
 import { COLOR_PALETTES } from '@/lib/color-palettes';
 import type { SimulationState } from '@/hooks/useSimulationControls';
+import type { EmitterConfig } from '@/lib/emitter-config';
 
 interface ParticleSystemProps {
   controlsRef: React.RefObject<SimulationState | null>;
@@ -16,13 +17,14 @@ interface ParticleSystemProps {
   textureSize: number;
   maxParticles: number;
   colorPalette?: string;
+  emittersRef: React.RefObject<EmitterConfig[]>;
 }
 
-export default function ParticleSystem({ controlsRef, positionTextureRef, velocityTextureRef, textureSize, maxParticles, colorPalette = 'plasma' }: ParticleSystemProps) {
+export default function ParticleSystem({ controlsRef, positionTextureRef, velocityTextureRef, textureSize, maxParticles, colorPalette = 'plasma', emittersRef }: ParticleSystemProps) {
   const { viewport } = useThree();
   const lastPaletteRef = useRef(colorPalette);
 
-  const gpuCompute = useGPUCompute(controlsRef, textureSize);
+  const gpuCompute = useGPUCompute(controlsRef, textureSize, emittersRef);
 
   const indices = useMemo(() => {
     const arr = new Float32Array(maxParticles);

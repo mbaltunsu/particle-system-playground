@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GPUComputationRenderer } from 'three/examples/jsm/misc/GPUComputationRenderer.js';
 import { velocitySimulationShader } from '@/shaders/compute/velocitySimulation.glsl';
 import { positionSimulationShader } from '@/shaders/compute/positionSimulation.glsl';
+import { createEmitterDataTexture, serializeEmittersToDataTexture, createDefaultEmitter } from '@/lib/emitter-config';
 
 export interface GPUComputeInstance {
   gpuCompute: GPUComputationRenderer;
@@ -9,6 +10,7 @@ export interface GPUComputeInstance {
   velocityVariable: ReturnType<GPUComputationRenderer['addVariable']>;
   positionUniforms: Record<string, THREE.IUniform>;
   velocityUniforms: Record<string, THREE.IUniform>;
+  emitterTexture: THREE.DataTexture;
 }
 
 function fillPositionTexture(texture: THREE.DataTexture) {
@@ -62,22 +64,18 @@ export function createGPUCompute(renderer: THREE.WebGLRenderer, textureSize: num
   gpuCompute.setVariableDependencies(positionVariable, [positionVariable, velocityVariable]);
   gpuCompute.setVariableDependencies(velocityVariable, [positionVariable, velocityVariable]);
 
+  // Create emitter DataTexture
+  const emitterTexture = createEmitterDataTexture();
+  const defaultEmitters = [createDefaultEmitter(0)];
+  serializeEmittersToDataTexture(defaultEmitters, emitterTexture);
+
   // Position uniforms
   const posUniforms = positionVariable.material.uniforms;
   posUniforms.uDeltaTime = { value: 0.016 };
   posUniforms.uLifeDecay = { value: 0.15 };
   posUniforms.uTime = { value: 0 };
-  posUniforms.uEmitterType = { value: 0 };
-  posUniforms.uEmitterPosition = { value: new THREE.Vector3(0, 0, 0) };
-  posUniforms.uEmitterDirection = { value: new THREE.Vector3(0, 1, 0) };
-  posUniforms.uEmitterSpeed = { value: 2.0 };
-  posUniforms.uEmitterRadius = { value: 1.0 };
-  posUniforms.uEmitterSize = { value: new THREE.Vector3(2, 2, 2) };
-  posUniforms.uEmitterHeight = { value: 2.0 };
-  posUniforms.uEmitterAngle = { value: 0.8 };
-  posUniforms.uEmitterMajorRadius = { value: 2.0 };
-  posUniforms.uEmitterMinorRadius = { value: 0.5 };
-  posUniforms.uEmitterEndPoint = { value: new THREE.Vector3(3, 3, 0) };
+  posUniforms.tEmitterData = { value: emitterTexture };
+  posUniforms.uNumEmitters = { value: 1 };
 
   // Velocity uniforms
   const velUniforms = velocityVariable.material.uniforms;
@@ -90,19 +88,10 @@ export function createGPUCompute(renderer: THREE.WebGLRenderer, textureSize: num
   velUniforms.uVortexStrength = { value: 0.5 };
   velUniforms.uGravityCenter = { value: new THREE.Vector3(0, 0, 0) };
 
-  // Emitter uniforms on velocity shader (for initial velocity on respawn)
+  // Emitter DataTexture on velocity shader
   velUniforms.uTime = { value: 0 };
-  velUniforms.uEmitterType = { value: 0 };
-  velUniforms.uEmitterPosition = { value: new THREE.Vector3(0, 0, 0) };
-  velUniforms.uEmitterDirection = { value: new THREE.Vector3(0, 1, 0) };
-  velUniforms.uEmitterSpeed = { value: 2.0 };
-  velUniforms.uEmitterRadius = { value: 1.0 };
-  velUniforms.uEmitterSize = { value: new THREE.Vector3(2, 2, 2) };
-  velUniforms.uEmitterHeight = { value: 2.0 };
-  velUniforms.uEmitterAngle = { value: 0.8 };
-  velUniforms.uEmitterMajorRadius = { value: 2.0 };
-  velUniforms.uEmitterMinorRadius = { value: 0.5 };
-  velUniforms.uEmitterEndPoint = { value: new THREE.Vector3(3, 3, 0) };
+  velUniforms.tEmitterData = { value: emitterTexture };
+  velUniforms.uNumEmitters = { value: 1 };
 
   // Effect uniforms
   velUniforms.uShockwaveActive = { value: 0 };
@@ -155,5 +144,6 @@ export function createGPUCompute(renderer: THREE.WebGLRenderer, textureSize: num
     velocityVariable,
     positionUniforms: posUniforms,
     velocityUniforms: velUniforms,
+    emitterTexture,
   };
 }

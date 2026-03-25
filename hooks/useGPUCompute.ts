@@ -4,6 +4,7 @@ import { useRef, useEffect, useCallback } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { createGPUCompute, GPUComputeInstance } from '@/components/canvas/GPUCompute';
+import { type EmitterConfig, serializeEmittersToDataTexture } from '@/lib/emitter-config';
 
 export interface GPUComputeRef {
   getPositionTexture: () => THREE.Texture | null;
@@ -19,13 +20,6 @@ export function useGPUCompute(controlsRef: React.RefObject<{
   magneticStrength: number;
   vortexStrength: number;
   lifeDecay: number;
-  emitterType: number;
-  emitterSpeed: number;
-  emitterRadius: number;
-  emitterHeight: number;
-  emitterAngle: number;
-  emitterMajorRadius: number;
-  emitterMinorRadius: number;
   drag: number;
   windStrength: number;
   windDirectionX: number;
@@ -62,7 +56,7 @@ export function useGPUCompute(controlsRef: React.RefObject<{
   nBodyStrength: number;
   nBodySoftening: number;
   nBodySampleCount: number;
-} | null>, textureSize: number): GPUComputeRef {
+} | null>, textureSize: number, emittersRef: React.RefObject<EmitterConfig[]>): GPUComputeRef {
   const { gl } = useThree();
   const computeRef = useRef<GPUComputeInstance | null>(null);
   const timeRef = useRef(0);
@@ -95,10 +89,7 @@ export function useGPUCompute(controlsRef: React.RefObject<{
     vu.uMagneticStrength.value = controls.magneticStrength;
     vu.uVortexStrength.value = controls.vortexStrength;
 
-    // Emitter uniforms on velocity shader (for respawn velocity)
     vu.uTime.value = timeRef.current;
-    vu.uEmitterType.value = controls.emitterType;
-    vu.uEmitterSpeed.value = controls.emitterSpeed;
 
     // Effects
     vu.uShockwaveActive.value = controls.shockwaveActive;
@@ -142,18 +133,14 @@ export function useGPUCompute(controlsRef: React.RefObject<{
     pu.uDeltaTime.value = dt;
     pu.uLifeDecay.value = controls.lifeDecay;
     pu.uTime.value = timeRef.current;
-    pu.uEmitterType.value = controls.emitterType;
-    pu.uEmitterSpeed.value = controls.emitterSpeed;
-    pu.uEmitterRadius.value = controls.emitterRadius;
-    pu.uEmitterHeight.value = controls.emitterHeight;
-    pu.uEmitterAngle.value = controls.emitterAngle;
-    pu.uEmitterMajorRadius.value = controls.emitterMajorRadius;
-    pu.uEmitterMinorRadius.value = controls.emitterMinorRadius;
 
-    vu.uEmitterHeight.value = controls.emitterHeight;
-    vu.uEmitterAngle.value = controls.emitterAngle;
-    vu.uEmitterMajorRadius.value = controls.emitterMajorRadius;
-    vu.uEmitterMinorRadius.value = controls.emitterMinorRadius;
+    // Serialize emitter data to DataTexture
+    const emitters = emittersRef.current;
+    if (emitters && compute.emitterTexture) {
+      serializeEmittersToDataTexture(emitters, compute.emitterTexture);
+      compute.positionUniforms.uNumEmitters.value = emitters.length;
+      compute.velocityUniforms.uNumEmitters.value = emitters.length;
+    }
 
     compute.gpuCompute.compute();
   });

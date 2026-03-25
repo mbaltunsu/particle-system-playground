@@ -3,6 +3,7 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import { useSimulationControls, type SimulationState } from '@/hooks/useSimulationControls';
 import type { ResolutionPresetKey } from '@/lib/types';
+import type { EmitterConfig } from '@/lib/emitter-config';
 
 interface SimulationContextValue {
   controlsRef: React.RefObject<SimulationState | null>;
@@ -10,15 +11,18 @@ interface SimulationContextValue {
   triggerExplosion: () => void;
   resolutionPreset: ResolutionPresetKey;
   colorPalette: string;
+  emitters: EmitterConfig[];
+  setEmitters: React.Dispatch<React.SetStateAction<EmitterConfig[]>>;
+  emittersRef: React.RefObject<EmitterConfig[]>;
 }
 
 const SimulationContext = createContext<SimulationContextValue | null>(null);
 
 export function SimulationProvider({ children }: { children: ReactNode }) {
-  const { controlsRef, triggerShockwave, triggerExplosion, resolutionPreset, colorPalette } = useSimulationControls();
+  const { controlsRef, triggerShockwave, triggerExplosion, resolutionPreset, colorPalette, emitters, setEmitters, emittersRef } = useSimulationControls();
 
   return (
-    <SimulationContext.Provider value={{ controlsRef, triggerShockwave, triggerExplosion, resolutionPreset, colorPalette }}>
+    <SimulationContext.Provider value={{ controlsRef, triggerShockwave, triggerExplosion, resolutionPreset, colorPalette, emitters, setEmitters, emittersRef }}>
       {children}
     </SimulationContext.Provider>
   );

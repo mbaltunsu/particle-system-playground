@@ -5,18 +5,9 @@ uniform float uDeltaTime;
 uniform float uLifeDecay;
 uniform float uTime;
 
-// Emitter uniforms
-uniform int uEmitterType; // 0=point, 1=sphere, 2=directional, 3=box, 4=cylinder, 5=cone, 6=torus, 7=disc, 8=line, 9=grid
-uniform vec3 uEmitterPosition;
-uniform vec3 uEmitterDirection;
-uniform float uEmitterSpeed;
-uniform float uEmitterRadius;
-uniform vec3 uEmitterSize;
-uniform float uEmitterHeight;
-uniform float uEmitterAngle;
-uniform float uEmitterMajorRadius;
-uniform float uEmitterMinorRadius;
-uniform vec3 uEmitterEndPoint;
+// Multi-emitter DataTexture
+uniform sampler2D tEmitterData;
+uniform int uNumEmitters;
 
 // Hash function for pseudo-random
 float hash(vec2 p) {
@@ -43,44 +34,66 @@ void main() {
   life -= uLifeDecay * uDeltaTime;
 
   if (life <= 0.0) {
+    // Determine which emitter this particle belongs to
+    float particleIndex = gl_FragCoord.y * resolution.x + gl_FragCoord.x;
+    int emitterIdx = int(mod(particleIndex, float(max(uNumEmitters, 1))));
+    float emitterV = (float(emitterIdx) + 0.5) / 32.0;
+
+    vec4 e0 = texture2D(tEmitterData, vec2(0.125, emitterV));
+    vec4 e1 = texture2D(tEmitterData, vec2(0.375, emitterV));
+    vec4 e2 = texture2D(tEmitterData, vec2(0.625, emitterV));
+    vec4 e3 = texture2D(tEmitterData, vec2(0.875, emitterV));
+
+    vec3 emitterPos = e0.xyz;
+    int emitterType = int(e0.w);
+    vec3 emitterDir = e1.xyz;
+    float emitterSpeed = e1.w;
+    float emitterRadius = e2.x;
+    float emitterHeight = e2.y;
+    float emitterAngle = e2.z;
+    float emitterMajorR = e2.w;
+    float emitterMinorR = e3.x;
+    vec3 emitterEndPt = e3.yzw;
+    vec3 emitterSize = vec3(emitterRadius * 2.0, emitterHeight, emitterRadius * 2.0);
+
     // Respawn particle based on emitter type
     vec3 newPos;
     float seed = uTime * 0.1;
 
-    if (uEmitterType == 0) {
+    if (emitterType == 0) {
       // Point emitter
-      newPos = uEmitterPosition + randomSpherePoint(uv, seed) * 0.5;
-    } else if (uEmitterType == 1) {
+      newPos = emitterPos + randomSpherePoint(uv, seed) * 0.5;
+    } else if (emitterType == 1) {
       // Sphere emitter
-      newPos = uEmitterPosition + randomSpherePoint(uv, seed) * uEmitterRadius;
-    } else if (uEmitterType == 2) {
+      newPos = emitterPos + randomSpherePoint(uv, seed) * emitterRadius;
+    } else if (emitterType == 2) {
       // Directional emitter - disk perpendicular to direction
-      vec3 right = normalize(cross(uEmitterDirection, vec3(0.0, 1.0, 0.001)));
-      vec3 up = cross(right, uEmitterDirection);
+      vec3 right = normalize(cross(emitterDir, vec3(0.0, 1.0, 0.001)));
+      vec3 up = cross(right, emitterDir);
       float angle = hash(uv + seed) * 6.28318;
-      float radius = sqrt(hash(uv * 2.3 + seed)) * uEmitterRadius;
-      newPos = uEmitterPosition + right * cos(angle) * radius + up * sin(angle) * radius;
-    } else if (uEmitterType == 3) {
+      float radius = sqrt(hash(uv * 2.3 + seed)) * emitterRadius;
+      newPos = emitterPos + right * cos(angle) * radius + up * sin(angle) * radius;
+    } else if (emitterType == 3) {
       // Box emitter
-      newPos = uEmitterPosition + emitBox(uv, seed, uEmitterSize);
-    } else if (uEmitterType == 4) {
+      newPos = emitterPos + emitBox(uv, seed, emitterSize);
+    } else if (emitterType == 4) {
       // Cylinder emitter
-      newPos = uEmitterPosition + emitCylinder(uv, seed, uEmitterRadius, uEmitterHeight);
-    } else if (uEmitterType == 5) {
+      newPos = emitterPos + emitCylinder(uv, seed, emitterRadius, emitterHeight);
+    } else if (emitterType == 5) {
       // Cone emitter
-      newPos = uEmitterPosition + emitCone(uv, seed, uEmitterAngle, uEmitterHeight);
-    } else if (uEmitterType == 6) {
+      newPos = emitterPos + emitCone(uv, seed, emitterAngle, emitterHeight);
+    } else if (emitterType == 6) {
       // Torus emitter
-      newPos = uEmitterPosition + emitTorus(uv, seed, uEmitterMajorRadius, uEmitterMinorRadius);
-    } else if (uEmitterType == 7) {
+      newPos = emitterPos + emitTorus(uv, seed, emitterMajorR, emitterMinorR);
+    } else if (emitterType == 7) {
       // Disc emitter
-      newPos = uEmitterPosition + emitDisc(uv, seed, uEmitterRadius);
-    } else if (uEmitterType == 8) {
+      newPos = emitterPos + emitDisc(uv, seed, emitterRadius);
+    } else if (emitterType == 8) {
       // Line emitter
-      newPos = emitLine(uv, seed, uEmitterPosition, uEmitterEndPoint);
-    } else if (uEmitterType == 9) {
+      newPos = emitLine(uv, seed, emitterPos, emitterEndPt);
+    } else if (emitterType == 9) {
       // Grid emitter
-      newPos = uEmitterPosition + emitGrid(uv, seed, 0.5, uEmitterRadius * 4.0);
+      newPos = emitterPos + emitGrid(uv, seed, 0.5, emitterRadius * 4.0);
     }
 
     // Random life duration

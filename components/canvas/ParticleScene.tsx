@@ -14,10 +14,12 @@ import ExplosionEffect from '@/components/canvas/effects/ExplosionEffect';
 import Overlay from '@/components/ui/Overlay';
 import EffectTriggers from '@/components/ui/EffectTriggers';
 import ExportPanel from '@/components/ui/ExportPanel';
+import LevaEnhancements from '@/components/ui/LevaEnhancements';
+import EmitterPanel from '@/components/ui/EmitterPanel';
 import { RESOLUTION_PRESETS } from '@/lib/gpu-capabilities';
 
 function SceneContents() {
-  const { controlsRef, resolutionPreset, colorPalette } = useSimulation();
+  const { controlsRef, resolutionPreset, colorPalette, emittersRef } = useSimulation();
   const positionTextureRef = useRef<THREE.Texture | null>(null);
   const velocityTextureRef = useRef<THREE.Texture | null>(null);
 
@@ -37,6 +39,7 @@ function SceneContents() {
         textureSize={textureSize}
         maxParticles={maxParticles}
         colorPalette={colorPalette}
+        emittersRef={emittersRef}
       />
       <ParticleTrails
         getPositionTexture={getPositionTexture}
@@ -77,6 +80,7 @@ export default function ParticleScene() {
           <SceneContents />
         </Canvas>
         <Overlay />
+        <EmitterPanel />
         <EffectTriggers />
         <ExportPanel
           getCanvas={() => document.querySelector('canvas') as HTMLCanvasElement | null}
@@ -100,6 +104,7 @@ export default function ParticleScene() {
             },
           }}
         />
+        <LevaEnhancements />
       </div>
     </SimulationProvider>
   );

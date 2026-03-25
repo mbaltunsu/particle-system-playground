@@ -1,11 +1,16 @@
 'use client';
 
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { useControls, folder } from 'leva';
 import { DEFAULTS } from '@/lib/constants';
-import { EmitterType, ResolutionPresetKey } from '@/lib/types';
+import { ResolutionPresetKey } from '@/lib/types';
 import { BUILT_IN_PRESETS } from '@/lib/presets';
+import { type EmitterConfig, createDefaultEmitter } from '@/lib/emitter-config';
 
+const EMITTER_TYPE_MAP: Record<string, number> = {
+  point: 0, sphere: 1, directional: 2, box: 3, cylinder: 4,
+  cone: 5, torus: 6, disc: 7, line: 8, grid: 9,
+};
 
 export interface SimulationState {
   gravity: number;
@@ -15,13 +20,6 @@ export interface SimulationState {
   magneticStrength: number;
   vortexStrength: number;
   lifeDecay: number;
-  emitterType: number;
-  emitterSpeed: number;
-  emitterRadius: number;
-  emitterHeight: number;
-  emitterAngle: number;
-  emitterMajorRadius: number;
-  emitterMinorRadius: number;
   simulationSpeed: number;
   drag: number;
   windStrength: number;
@@ -60,11 +58,6 @@ export interface SimulationState {
   nBodySampleCount: number;
 }
 
-const EMITTER_MAP: Record<EmitterType, number> = {
-  point: 0, sphere: 1, directional: 2, box: 3, cylinder: 4,
-  cone: 5, torus: 6, disc: 7, line: 8, grid: 9,
-};
-
 const PRESET_NAMES = Object.keys(BUILT_IN_PRESETS);
 
 export function useSimulationControls() {
@@ -76,13 +69,6 @@ export function useSimulationControls() {
     magneticStrength: DEFAULTS.magneticStrength,
     vortexStrength: DEFAULTS.vortexStrength,
     lifeDecay: DEFAULTS.lifeDecay,
-    emitterType: 0,
-    emitterSpeed: DEFAULTS.emitterSpeed,
-    emitterRadius: DEFAULTS.emitterRadius,
-    emitterHeight: 2.0,
-    emitterAngle: 0.8,
-    emitterMajorRadius: 2.0,
-    emitterMinorRadius: 0.5,
     simulationSpeed: DEFAULTS.simulationSpeed,
     drag: 1.0,
     windStrength: 0,
@@ -120,6 +106,11 @@ export function useSimulationControls() {
     nBodySoftening: 0.5,
     nBodySampleCount: 128,
   });
+
+  // Emitter array state
+  const [emitters, setEmitters] = useState<EmitterConfig[]>([createDefaultEmitter(0)]);
+  const emittersRef = useRef<EmitterConfig[]>(emitters);
+  useEffect(() => { emittersRef.current = emitters; }, [emitters]);
 
   const shockwaveTimerRef = useRef<number | null>(null);
   const explosionTimerRef = useRef<number | null>(null);
@@ -175,15 +166,6 @@ export function useSimulationControls() {
     Particles: folder({
       lifeDecay: { value: DEFAULTS.lifeDecay, min: 0.01, max: 1, step: 0.01 },
     }),
-    Emitter: folder({
-      emitterType: { value: 'point' as EmitterType, options: { Point: 'point', Sphere: 'sphere', Directional: 'directional', Box: 'box', Cylinder: 'cylinder', Cone: 'cone', Torus: 'torus', Disc: 'disc', Line: 'line', Grid: 'grid' } },
-      emitterSpeed: { value: DEFAULTS.emitterSpeed, min: 0.1, max: 10, step: 0.1 },
-      emitterRadius: { value: DEFAULTS.emitterRadius, min: 0.1, max: 5, step: 0.1 },
-      emitterHeight: { value: 2.0, min: 0.1, max: 10, step: 0.1 },
-      emitterAngle: { value: 0.8, min: 0.1, max: 3.14, step: 0.01 },
-      emitterMajorRadius: { value: 2.0, min: 0.1, max: 5, step: 0.1 },
-      emitterMinorRadius: { value: 0.5, min: 0.1, max: 2, step: 0.1 },
-    }),
     Collision: folder({
       collider0Type: { value: 0, options: { None: 0, 'Ground Plane': 3, Sphere: 1, Box: 2 } },
       collider0PositionY: { value: -3, min: -10, max: 10, step: 0.1 },
@@ -232,13 +214,6 @@ export function useSimulationControls() {
           turbulenceOctaves: v.turbulenceOctaves,
           turbulenceStrength: v.turbulenceStrength,
           lifeDecay: v.lifeDecay,
-          emitterType: v.emitterType,
-          emitterSpeed: v.emitterSpeed,
-          emitterRadius: v.emitterRadius,
-          emitterHeight: v.emitterHeight,
-          emitterAngle: v.emitterAngle,
-          emitterMajorRadius: v.emitterMajorRadius,
-          emitterMinorRadius: v.emitterMinorRadius,
           simulationSpeed: v.simulationSpeed,
           collider0Type: v.collider0Type,
           collider0PositionY: v.collider0PositionY,
@@ -260,6 +235,17 @@ export function useSimulationControls() {
           nBodySampleCount: v.nBodySampleCount,
           colorPalette: v.colorPalette,
         });
+
+        // Convert preset emitter values to EmitterConfig
+        const emitterTypeNum = EMITTER_TYPE_MAP[v.emitterType] ?? 0;
+        const presetEmitter = createDefaultEmitter(emitterTypeNum);
+        presetEmitter.speed = v.emitterSpeed;
+        presetEmitter.radius = v.emitterRadius;
+        presetEmitter.height = v.emitterHeight;
+        presetEmitter.angle = v.emitterAngle;
+        presetEmitter.majorRadius = v.emitterMajorRadius;
+        presetEmitter.minorRadius = v.emitterMinorRadius;
+        setEmitters([presetEmitter]);
       }
     }
   }, [controls.preset, set]);
@@ -274,13 +260,6 @@ export function useSimulationControls() {
     s.magneticStrength = controls.magneticStrength;
     s.vortexStrength = controls.vortexStrength;
     s.lifeDecay = controls.lifeDecay;
-    s.emitterType = EMITTER_MAP[controls.emitterType as EmitterType] ?? 0;
-    s.emitterSpeed = controls.emitterSpeed;
-    s.emitterRadius = controls.emitterRadius;
-    s.emitterHeight = controls.emitterHeight;
-    s.emitterAngle = controls.emitterAngle;
-    s.emitterMajorRadius = controls.emitterMajorRadius;
-    s.emitterMinorRadius = controls.emitterMinorRadius;
     s.simulationSpeed = controls.simulationSpeed;
     s.drag = controls.drag;
     s.windStrength = controls.windStrength;
@@ -366,5 +345,8 @@ export function useSimulationControls() {
     controls,
     resolutionPreset: (controls.resolution as ResolutionPresetKey) ?? 'medium',
     colorPalette: (controls.colorPalette as string) ?? 'plasma',
+    emitters,
+    setEmitters,
+    emittersRef,
   };
 }
