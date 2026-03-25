@@ -343,6 +343,7 @@ export function useSimulationControls() {
     triggerShockwave,
     triggerExplosion,
     controls,
+    levaSet: set,
     resolutionPreset: (controls.resolution as ResolutionPresetKey) ?? 'medium',
     colorPalette: (controls.colorPalette as string) ?? 'plasma',
     emitters,

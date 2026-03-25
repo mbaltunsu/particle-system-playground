@@ -1,0 +1,152 @@
+'use client';
+
+import { useRef, useState, useCallback, useEffect } from 'react';
+import { useFrame } from '@react-three/fiber';
+import type { SimulationState } from '@/hooks/useSimulationControls';
+import type { EmitterConfig } from '@/lib/emitter-config';
+import type { Scene } from '@/lib/scene/types';
+import { interpolateAtTime } from '@/lib/scene/interpolation';
+import { captureKeyframe, createEmptyScene, saveScene } from '@/lib/scene/scene-manager';
+
+export interface SceneTimelineAPI {
+  scene: Scene | null;
+  isPlaying: boolean;
+  currentTime: number;
+  playbackSpeed: number;
+  setScene: (scene: Scene | null) => void;
+  newScene: (name?: string) => void;
+  play: () => void;
+  pause: () => void;
+  togglePlay: () => void;
+  seek: (time: number) => void;
+  setPlaybackSpeed: (speed: number) => void;
+  addKeyframe: () => void;
+  removeKeyframe: (id: string) => void;
+  updateKeyframeTimestamp: (id: string, timestamp: number) => void;
+  save: () => void;
+}
+
+export function useSceneTimeline(
+  controlsRef: React.RefObject<SimulationState | null>,
+  emittersRef: React.RefObject<EmitterConfig[]>,
+  colorPalette: string,
+  setEmitters: (emitters: EmitterConfig[]) => void,
+  levaSet: (values: Record<string, unknown>) => void,
+): SceneTimelineAPI {
+  const [scene, setSceneState] = useState<Scene | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
+  const lastLevaUpdateRef = useRef(0);
+  const timeRef = useRef(0);
+
+  const setScene = useCallback((s: Scene | null) => {
+    setSceneState(s);
+    setCurrentTime(0);
+    timeRef.current = 0;
+    setIsPlaying(false);
+  }, []);
+
+  const newScene = useCallback((name = 'Untitled Scene') => {
+    setScene(createEmptyScene(name));
+  }, [setScene]);
+
+  const play = useCallback(() => setIsPlaying(true), []);
+  const pause = useCallback(() => setIsPlaying(false), []);
+  const togglePlay = useCallback(() => setIsPlaying(p => !p), []);
+  const seek = useCallback((time: number) => {
+    timeRef.current = time;
+    setCurrentTime(time);
+  }, []);
+
+  const addKeyframe = useCallback(() => {
+    if (!scene || !controlsRef.current) return;
+    const kf = captureKeyframe(
+      controlsRef.current,
+      emittersRef.current ?? [],
+      colorPalette,
+      timeRef.current,
+    );
+    const updated = {
+      ...scene,
+      keyframes: [...scene.keyframes, kf].sort((a, b) => a.timestamp - b.timestamp),
+    };
+    setSceneState(updated);
+  }, [scene, controlsRef, emittersRef, colorPalette]);
+
+  const removeKeyframe = useCallback((id: string) => {
+    if (!scene) return;
+    setSceneState({
+      ...scene,
+      keyframes: scene.keyframes.filter(kf => kf.id !== id),
+    });
+  }, [scene]);
+
+  const updateKeyframeTimestamp = useCallback((id: string, timestamp: number) => {
+    if (!scene) return;
+    setSceneState({
+      ...scene,
+      keyframes: scene.keyframes
+        .map(kf => kf.id === id ? { ...kf, timestamp: Math.max(0, Math.min(timestamp, scene.duration)) } : kf)
+        .sort((a, b) => a.timestamp - b.timestamp),
+    });
+  }, [scene]);
+
+  const save = useCallback(() => {
+    if (scene) saveScene(scene);
+  }, [scene]);
+
+  // Keep timeRef in sync when currentTime changes from UI (seek)
+  useEffect(() => {
+    timeRef.current = currentTime;
+  }, [currentTime]);
+
+  // Playback loop
+  useFrame((_, delta) => {
+    if (!scene || !isPlaying || !controlsRef.current) return;
+    if (scene.keyframes.length < 2) return;
+
+    const newTime = timeRef.current + delta * playbackSpeed;
+    if (newTime >= scene.duration) {
+      timeRef.current = 0; // loop
+    } else {
+      timeRef.current = newTime;
+    }
+
+    // Interpolate and apply
+    const result = interpolateAtTime(scene, timeRef.current);
+
+    // Apply state to controlsRef (direct, every frame)
+    if (result.state) {
+      const s = controlsRef.current;
+      for (const [key, value] of Object.entries(result.state)) {
+        (s as unknown as Record<string, unknown>)[key] = value;
+      }
+    }
+
+    // Apply emitters
+    if (result.emitters) {
+      setEmitters(result.emitters);
+    }
+
+    // Throttle UI state sync and Leva updates to 10Hz
+    const now = performance.now();
+    if (now - lastLevaUpdateRef.current > 100) {
+      lastLevaUpdateRef.current = now;
+      setCurrentTime(timeRef.current);
+      if (result.state) {
+        levaSet(result.state as Record<string, unknown>);
+      }
+      if (result.colorPalette) {
+        levaSet({ colorPalette: result.colorPalette });
+      }
+    }
+  });
+
+  return {
+    scene, isPlaying, currentTime, playbackSpeed,
+    setScene, newScene, play, pause, togglePlay, seek,
+    setPlaybackSpeed, addKeyframe, removeKeyframe,
+    updateKeyframeTimestamp, save,
+  };
+}
